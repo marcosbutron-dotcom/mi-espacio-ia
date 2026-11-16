@@ -71,6 +71,7 @@
     <main>
       <nav>
         <button class="tab active" data-tab="chat">IA y chats</button>
+        <button class="tab" data-tab="player">Ver aquí</button>
         <button class="tab" data-tab="memory">Memoria</button>
         <button class="tab" data-tab="youtube">YouTube</button>
         <button class="tab" data-tab="games">Juegos</button>
@@ -84,6 +85,29 @@
           <input id="messageInput" placeholder="Escribe un mensaje…" autocomplete="off" required>
           <button>Enviar</button>
         </form>
+      </section>
+
+      <section id="player" class="panel hidden">
+        <h2>Ver vídeos y jugar aquí</h2>
+        <p class="hint">Pega el enlace del vídeo o juego y se mostrará en esta pantalla, sin salir de la página. Algunos sitios impiden que su contenido se incruste; en ese caso usa el enlace para abrirlo.</p>
+        <h3>Vídeo de YouTube</h3>
+        <form id="screenVideoForm" class="row">
+          <input id="screenVideoUrl" type="url" placeholder="Pega el enlace de YouTube (youtube.com o youtu.be)" required>
+          <button>Ver vídeo</button>
+        </form>
+        <div id="screenVideoFrame"></div>
+        <h3>Juego de Scratch</h3>
+        <form id="screenScratchForm" class="row">
+          <input id="screenScratchUrl" type="url" placeholder="Pega el enlace del proyecto de Scratch" required>
+          <button>Jugar</button>
+        </form>
+        <div id="screenScratchFrame"></div>
+        <h3>Juego o página de Google Sites</h3>
+        <form id="screenSitesForm" class="row">
+          <input id="screenSitesUrl" type="url" placeholder="Pega el enlace de sites.google.com" required>
+          <button>Abrir aquí</button>
+        </form>
+        <div id="screenSitesFrame"></div>
       </section>
 
       <section id="memory" class="panel hidden">
@@ -182,6 +206,51 @@
 
     $("#newChat").onclick = newChat;
     $("#memoryText").value = memory;
+
+    function youtubeId(url) {
+      try {
+        const parsed = new URL(url);
+        let id = "";
+        if (parsed.hostname === "youtu.be" || parsed.hostname.endsWith(".youtu.be")) id = parsed.pathname.split("/").filter(Boolean)[0] || "";
+        else if (parsed.hostname === "youtube.com" || parsed.hostname.endsWith(".youtube.com")) {
+          if (parsed.pathname === "/watch") id = parsed.searchParams.get("v") || "";
+          else if (/^\/(embed|shorts)\//.test(parsed.pathname)) id = parsed.pathname.split("/")[2] || "";
+        }
+        return /^[\w-]{11}$/.test(id) ? id : "";
+      } catch { return ""; }
+    }
+    $("#screenVideoForm").onsubmit = event => {
+      event.preventDefault();
+      const id = youtubeId($("#screenVideoUrl").value.trim());
+      if (!id) { alert("Pega un enlace válido de un vídeo de YouTube."); return; }
+      const frame = document.createElement("iframe");
+      frame.src = "https://www.youtube-nocookie.com/embed/" + id;
+      frame.title = "Vídeo de YouTube";
+      frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+      frame.allowFullscreen = true;
+      $("#screenVideoFrame").replaceChildren(frame);
+    };
+    $("#screenScratchForm").onsubmit = event => {
+      event.preventDefault();
+      const match = $("#screenScratchUrl").value.trim().match(/scratch\.mit\.edu\/projects\/(\d+)/);
+      if (!match) { alert("Pega un enlace de un proyecto válido de Scratch."); return; }
+      const frame = document.createElement("iframe");
+      frame.src = "https://scratch.mit.edu/projects/" + match[1] + "/embed";
+      frame.title = "Juego de Scratch";
+      frame.allowFullscreen = true;
+      $("#screenScratchFrame").replaceChildren(frame);
+    };
+    $("#screenSitesForm").onsubmit = event => {
+      event.preventDefault();
+      try {
+        const url = new URL($("#screenSitesUrl").value.trim());
+        if (url.protocol !== "https:" || !/(^|\.)sites\.google\.com$/i.test(url.hostname)) throw new Error();
+        const frame = document.createElement("iframe");
+        frame.src = url.href;
+        frame.title = "Juego o sitio de Google Sites";
+        $("#screenSitesFrame").replaceChildren(frame);
+      } catch { alert("Pega un enlace válido que empiece por https://sites.google.com/"); }
+    };
 
     $("#saveMemory").onclick = () => {
       memory = $("#memoryText").value.trim();
