@@ -118,17 +118,14 @@
       </section>
 
       <section id="youtube" class="panel hidden">
-        <h2>Busca y elige un vídeo de YouTube</h2>
+        <h2>YouTube: ver el vídeo aquí</h2>
+        <p class="hint">Pega el enlace del vídeo que quieras ver y se reproducirá incrustado aquí, sin abrir la página de YouTube.</p>
         <form id="youtubeForm" class="row">
-          <input id="youtubeQuery" placeholder="¿Qué vídeo quieres buscar?" required>
-          <button>Buscar vídeos</button>
-        </form>
-        <p class="hint">Se abrirán los resultados de YouTube en otra pestaña. Elige un vídeo, copia su enlace y pégalo aquí para mostrarlo debajo.</p>
-        <form id="videoForm" class="row">
-          <input id="videoUrl" type="url" placeholder="Pega aquí el enlace del vídeo elegido" required>
-          <button>Mostrar vídeo</button>
+          <input id="youtubeQuery" type="url" placeholder="Pega el enlace del vídeo de YouTube" required>
+          <button>Reproducir aquí</button>
         </form>
         <div id="videoFrame"></div>
+        <p class="hint">La búsqueda de títulos dentro de esta página necesita la API oficial de YouTube y un servidor para proteger la clave. El alojamiento actual de GitHub Pages es estático.</p>
       </section>
 
       <section id="games" class="panel hidden">
@@ -322,19 +319,9 @@
     $("#youtubeForm").onsubmit = event => {
       event.preventDefault();
       const query = $("#youtubeQuery").value.trim();
-      if (query) window.open(
-        "https://www.youtube.com/results?search_query=" + encodeURIComponent(query),
-        "_blank",
-        "noopener,noreferrer"
-      );
-    };
-
-    $("#videoForm").onsubmit = event => {
-      event.preventDefault();
-      const url = $("#videoUrl").value.trim();
       let id = "";
       try {
-        const parsed = new URL(url);
+        const parsed = new URL(query);
         if (parsed.hostname === "youtu.be" || parsed.hostname.endsWith(".youtu.be")) id = parsed.pathname.split("/").filter(Boolean)[0] || "";
         else if (parsed.hostname === "youtube.com" || parsed.hostname.endsWith(".youtube.com")) {
           if (parsed.pathname === "/watch") id = parsed.searchParams.get("v") || "";
@@ -342,7 +329,7 @@
         }
       } catch {}
       if (!/^[\w-]{11}$/.test(id)) {
-        alert("No reconozco ese enlace. Pega un enlace normal de YouTube, youtu.be o Shorts.");
+        alert("Pega un enlace válido de un vídeo de YouTube (youtube.com o youtu.be).");
         return;
       }
       const frame = document.createElement("iframe");
