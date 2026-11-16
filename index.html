@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mi espacio</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: Arial, sans-serif; color: #172033;
+      background: #f3f6fb;
+    }
+    header {
+      padding: 18px 22px; color: white; background: #5146e5;
+      font-size: 21px; font-weight: bold;
+    }
+    .layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 60px); }
+    aside { background: white; padding: 16px; border-right: 1px solid #e2e6ee; }
+    button, input, textarea { font: inherit; }
+    button {
+      cursor: pointer; border: 0; border-radius: 9px; padding: 10px 13px;
+      background: #5146e5; color: white;
+    }
+    button:hover { filter: brightness(.95); }
+    .secondary { background: #e9eafe; color: #3029a8; }
+    .chat-list { margin-top: 14px; display: grid; gap: 7px; }
+    .chat-choice {
+      text-align: left; background: #f1f2f8; color: #172033;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .chat-choice.active { background: #e6e4ff; color: #3029a8; }
+    main { padding: 22px; max-width: 1000px; width: 100%; margin: auto; }
+    nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+    nav button { background: white; color: #30384b; border: 1px solid #e1e5ee; }
+    nav button.active { background: #5146e5; color: white; }
+    .panel {
+      background: white; border-radius: 14px; padding: 18px;
+      box-shadow: 0 3px 14px #1720330d;
+    }
+    h2 { margin-top: 0; }
+    #messages { display: grid; gap: 10px; margin: 16px 0; }
+    .message { padding: 11px 14px; border-radius: 12px; max-width: 85%; white-space: pre-wrap; }
+    .user { justify-self: end; background: #e9e7ff; }
+    .assistant { justify-self: start; background: #f0f2f6; }
+    .row { display: flex; gap: 8px; }
+    .row input { flex: 1; }
+    input, textarea {
+      width: 100%; padding: 11px; border: 1px solid #ccd2df; border-radius: 9px;
+    }
+    textarea { min-height: 100px; resize: vertical; }
+    .hint { color: #657086; font-size: 14px; line-height: 1.5; }
+    .hidden { display: none; }
+    iframe { width: 100%; min-height: 420px; border: 0; border-radius: 12px; margin-top: 14px; }
+    @media (max-width: 650px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { border-right: 0; border-bottom: 1px solid #e2e6ee; }
+      .chat-list { grid-template-columns: repeat(2, 1fr); }
+      main { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <header>Mi espacio</header>
+
+  <div class="layout">
+    <aside>
+      <button id="newChat">＋ Nuevo chat</button>
+      <div id="chatList" class="chat-list"></div>
+    </aside>
+
+    <main>
+      <nav>
+        <button class="tab active" data-tab="chat">IA y chats</button>
+        <button class="tab" data-tab="memory">Memoria</button>
+        <button class="tab" data-tab="youtube">YouTube</button>
+        <button class="tab" data-tab="games">Juegos</button>
+      </nav>
+
+      <section id="chat" class="panel">
+        <h2>Chat con la IA</h2>
+        <p class="hint">Tus chats se guardan en este navegador. La primera respuesta descarga un modelo de IA y puede tardar varios minutos. Necesitas un navegador compatible con WebGPU.</p>
+        <div id="messages"></div>
+        <form id="chatForm" class="row">
+          <input id="messageInput" placeholder="Escribe un mensaje…" autocomplete="off" required>
+          <button>Enviar</button>
+        </form>
+      </section>
+
+      <section id="memory" class="panel hidden">
+        <h2>Mi memoria</h2>
+        <p class="hint">Escribe cosas que quieras que la IA tenga en cuenta. Se guardan en este navegador.</p>
+        <textarea id="memoryText" placeholder="Por ejemplo: me gustan las explicaciones cortas."></textarea>
+        <p><button id="saveMemory">Guardar memoria</button></p>
+      </section>
+
+      <section id="youtube" class="panel hidden">
+        <h2>Busca y elige un vídeo de YouTube</h2>
+        <form id="youtubeForm" class="row">
+          <input id="youtubeQuery" placeholder="¿Qué vídeo quieres buscar?" required>
+          <button>Buscar vídeos</button>
+        </form>
+        <p class="hint">Se abrirán los resultados de YouTube en otra pestaña. Elige un vídeo, copia su enlace y pégalo aquí para mostrarlo debajo.</p>
+        <form id="videoForm" class="row">
+          <input id="videoUrl" type="url" placeholder="Pega aquí el enlace del vídeo elegido" required>
+          <button>Mostrar vídeo</button>
+        </form>
+        <div id="videoFrame"></div>
+      </section>
+
+      <section id="games" class="panel hidden">
+        <h2>Juegos de Google Sites y Scratch</h2>
+        <h3>Juego o página de Google Sites</h3>
+        <p class="hint">Pega el enlace a un juego o página de Google Sites. Si la página permite mostrarse incrustada, aparecerá aquí; también tendrás un enlace para abrirla aparte.</p>
+        <form id="sitesForm" class="row">
+          <input id="sitesUrl" type="url" placeholder="https://sites.google.com/view/tu-juego" required>
+          <button>Abrir sitio</button>
+        </form>
+        <div id="sitesFrame"></div>
+        <h3>Juego de Scratch</h3>
+        <p class="hint">Pega el enlace de un proyecto de Scratch para jugarlo aquí.</p>
+        <form id="gameForm" class="row">
+          <input id="scratchUrl" type="url" placeholder="https://scratch.mit.edu/projects/123456789/" required>
+          <button>Abrir juego</button>
+        </form>
+        <div id="gameFrame"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // El modelo se ejecuta en el navegador, sin guardar claves API en GitHub.
+    let aiEngine = null;
+    let busy = false;
+    const $ = (selector) => document.querySelector(selector);
+
+    let chats = JSON.parse(localStorage.getItem("chats") || "[]");
+    let activeChatId = localStorage.getItem("activeChatId");
+    let memory = localStorage.getItem("myMemory") || "";
+
+    function saveChats() {
+      localStorage.setItem("chats", JSON.stringify(chats));
+      localStorage.setItem("activeChatId", activeChatId || "");
+    }
+
+    function currentChat() {
+      return chats.find(chat => chat.id === activeChatId);
+    }
+
+    function newChat() {
+      const chat = { id: String(Date.now()), title: "Nuevo chat", messages: [] };
+      chats.unshift(chat);
+      activeChatId = chat.id;
+      saveChats();
+      render();
+    }
+
+    function render() {
+      const list = $("#chatList");
+      list.replaceChildren();
+
+      chats.forEach(chat => {
+        const button = document.createElement("button");
+        button.className = "chat-choice" + (chat.id === activeChatId ? " active" : "");
+        button.textContent = chat.title;
+        button.onclick = () => { activeChatId = chat.id; saveChats(); render(); };
+        list.appendChild(button);
+      });
+
+      const messages = $("#messages");
+      messages.replaceChildren();
+      const chat = currentChat();
+
+      if (chat) {
+        chat.messages.forEach(item => {
+          const bubble = document.createElement("div");
+          bubble.className = "message " + item.role;
+          bubble.textContent = item.text;
+          messages.appendChild(bubble);
+        });
+      }
+    }
+
+    $("#newChat").onclick = newChat;
+    $("#memoryText").value = memory;
+
+    $("#saveMemory").onclick = () => {
+      memory = $("#memoryText").value.trim();
+      localStorage.setItem("myMemory", memory);
+      alert("Memoria guardada.");
+    };
+
+    document.querySelectorAll(".tab").forEach(button => {
+      button.onclick = () => {
+        document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+        button.classList.add("active");
+        document.querySelectorAll("main section").forEach(section => section.classList.add("hidden"));
+        $("#" + button.dataset.tab).classList.remove("hidden");
+      };
+    });
+
+    $("#chatForm").onsubmit = async event => {
+      event.preventDefault();
+      if (busy) return;
+      if (!currentChat()) newChat();
+
+      const text = $("#messageInput").value.trim();
+      if (!text) return;
+
+      const chat = currentChat();
+      chat.messages.push({ role: "user", text });
+      if (chat.title === "Nuevo chat") chat.title = text.slice(0, 24);
+      $("#messageInput").value = "";
+      saveChats();
+      render();
+
+      const waiting = { role: "assistant", text: "Pensando…" };
+      chat.messages.push(waiting);
+      render();
+
+      busy = true;
+      try {
+        if (!navigator.gpu) throw new Error("Este navegador no es compatible con WebGPU. Prueba con una versión reciente de Chrome o Edge en un dispositivo compatible.");
+        if (!aiEngine) {
+          const webllm = await import("https://esm.run/@mlc-ai/web-llm");
+          aiEngine = await webllm.CreateMLCEngine("Llama-3.2-1B-Instruct-q4f32_1-MLC", {
+            initProgressCallback: progress => {
+              waiting.text = "Cargando la IA: " + Math.round(progress.progress * 100) + " %. La primera vez puede tardar varios minutos.";
+              render();
+            }
+          });
+        }
+        waiting.text = "Pensando…";
+        render();
+        const history = chat.messages.slice(0, -1).map(item => ({
+          role: item.role === "user" ? "user" : "assistant", content: item.text
+        }));
+        const result = await aiEngine.chat.completions.create({
+          messages: [{role:"system", content:"Eres una asistente útil. Responde en español. " + (memory ? "Preferencias o memoria del usuario: " + memory : "")}, ...history],
+          temperature: 0.7,
+          max_tokens: 512
+        });
+        waiting.text = result.choices[0]?.message?.content || "No he podido generar una respuesta. Inténtalo otra vez.";
+      } catch (error) {
+        waiting.text = "No se ha podido cargar o ejecutar la IA: " + (error.message || String(error));
+      } finally {
+        busy = false;
+      }
+
+      saveChats();
+      render();
+    };
+
+    $("#youtubeForm").onsubmit = event => {
+      event.preventDefault();
+      const query = $("#youtubeQuery").value.trim();
+      if (query) window.open(
+        "https://www.youtube.com/results?search_query=" + encodeURIComponent(query),
+        "_blank",
+        "noopener,noreferrer"
+      );
+    };
+
+    $("#videoForm").onsubmit = event => {
+      event.preventDefault();
+      const url = $("#videoUrl").value.trim();
+      let id = "";
+      try {
+        const parsed = new URL(url);
+        if (parsed.hostname === "youtu.be" || parsed.hostname.endsWith(".youtu.be")) id = parsed.pathname.split("/").filter(Boolean)[0] || "";
+        else if (parsed.hostname === "youtube.com" || parsed.hostname.endsWith(".youtube.com")) {
+          if (parsed.pathname === "/watch") id = parsed.searchParams.get("v") || "";
+          else if (/^\/(embed|shorts)\//.test(parsed.pathname)) id = parsed.pathname.split("/")[2] || "";
+        }
+      } catch {}
+      if (!/^[\w-]{11}$/.test(id)) {
+        alert("No reconozco ese enlace. Pega un enlace normal de YouTube, youtu.be o Shorts.");
+        return;
+      }
+      const frame = document.createElement("iframe");
+      frame.src = "https://www.youtube-nocookie.com/embed/" + id;
+      frame.title = "Vídeo elegido de YouTube";
+      frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+      frame.allowFullscreen = true;
+      $("#videoFrame").replaceChildren(frame);
+    };
+
+    $("#sitesForm").onsubmit = event => {
+      event.preventDefault();
+      const url = $("#sitesUrl").value.trim();
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== "https:" || !/(^|\.)sites\.google\.com$/i.test(parsed.hostname)) throw new Error();
+        const link = document.createElement("p");
+        link.className = "hint";
+        const anchor = document.createElement("a");
+        anchor.href = parsed.href;
+        anchor.target = "_blank";
+        anchor.rel = "noopener noreferrer";
+        anchor.textContent = "Abrir este juego o sitio de Google Sites en una pestaña nueva";
+        link.append(anchor);
+        const frame = document.createElement("iframe");
+        frame.src = parsed.href;
+        frame.title = "Juego o página de Google Sites";
+        $("#sitesFrame").replaceChildren(link, frame);
+      } catch {
+        alert("Pega un enlace válido que empiece con https://sites.google.com/");
+      }
+    };
+
+    $("#gameForm").onsubmit = event => {
+      event.preventDefault();
+      const url = $("#scratchUrl").value.trim();
+      const match = url.match(/scratch\.mit\.edu\/projects\/(\d+)/);
+
+      if (!match) {
+        alert("Pega un enlace válido de un proyecto de Scratch.");
+        return;
+      }
+
+      const frame = document.createElement("iframe");
+      frame.src = "https://scratch.mit.edu/projects/" + match[1] + "/embed";
+      frame.title = "Juego de Scratch";
+      frame.allowFullscreen = true;
+      $("#gameFrame").replaceChildren(frame);
+    };
+
+    if (!currentChat()) newChat();
+    else render();
+  </script>
+</body>
+</html>
