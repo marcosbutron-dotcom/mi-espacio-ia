@@ -50,6 +50,12 @@
     textarea { min-height: 100px; resize: vertical; }
     .hint { color: #657086; font-size: 14px; line-height: 1.5; }
     .hidden { display: none; }
+    .video-results { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:16px 0; }
+    .video-result { text-align:left; background:#f1f2f8; color:#172033; padding:9px; overflow:hidden; }
+    .video-result img { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:6px; display:block; margin-bottom:6px; }
+    .video-result span { display:block; font-size:14px; line-height:1.3; }
+    .player-box iframe { width:100%; aspect-ratio:16/9; height:auto; min-height:200px; background:#111; }
+
     iframe { width: 100%; min-height: 420px; border: 0; border-radius: 12px; margin-top: 14px; }
     @media (max-width: 650px) {
       .layout { grid-template-columns: 1fr; }
@@ -118,14 +124,21 @@
       </section>
 
       <section id="youtube" class="panel hidden">
-        <h2>YouTube: ver el vídeo aquí</h2>
-        <p class="hint">Pega el enlace del vídeo que quieras ver y se reproducirá incrustado aquí, sin abrir la página de YouTube.</p>
+        <h2>Buscar y ver vídeos</h2>
+        <form id="youtubeSearchForm" class="row">
+          <input id="youtubeSearch" type="search" placeholder="Busca un vídeo por nombre" required>
+          <button>Buscar</button>
+        </form>
+        <p class="hint">La búsqueda utiliza un servicio externo, que recibe lo que escribas. Elige un resultado para verlo abajo sin salir de la página.</p>
+        <p id="youtubeStatus" class="hint" role="status" aria-live="polite"></p>
+        <div id="youtubeResults" class="video-results"></div>
+        <h3>Reproductor</h3>
+        <div id="videoFrame" class="player-box"><p class="hint">Elige un vídeo de los resultados o pega un enlace más abajo.</p></div>
         <form id="youtubeForm" class="row">
-          <input id="youtubeQuery" type="url" placeholder="Pega el enlace del vídeo de YouTube" required>
+          <input id="youtubeQuery" type="text" placeholder="O pega aquí un enlace de YouTube" required>
           <button>Reproducir aquí</button>
         </form>
-        <div id="videoFrame"></div>
-        <p class="hint">La búsqueda de títulos dentro de esta página necesita la API oficial de YouTube y un servidor para proteger la clave. El alojamiento actual de GitHub Pages es estático.</p>
+        <p class="hint">Algunos vídeos no permiten reproducirse fuera de YouTube o pueden estar restringidos. Si el servicio de búsqueda no responde, prueba más tarde o pega un enlace.</p>
       </section>
 
       <section id="games" class="panel hidden">
@@ -316,28 +329,59 @@
       render();
     };
 
-    $("#youtubeForm").onsubmit = event => {
-      event.preventDefault();
-      const query = $("#youtubeQuery").value.trim();
-      let id = "";
-      try {
-        const parsed = new URL(query);
-        if (parsed.hostname === "youtu.be" || parsed.hostname.endsWith(".youtu.be")) id = parsed.pathname.split("/").filter(Boolean)[0] || "";
-        else if (parsed.hostname === "youtube.com" || parsed.hostname.endsWith(".youtube.com")) {
-          if (parsed.pathname === "/watch") id = parsed.searchParams.get("v") || "";
-          else if (/^\/(embed|shorts)\//.test(parsed.pathname)) id = parsed.pathname.split("/")[2] || "";
-        }
-      } catch {}
-      if (!/^[\w-]{11}$/.test(id)) {
-        alert("Pega un enlace válido de un vídeo de YouTube (youtube.com o youtu.be).");
-        return;
-      }
+    function playYoutube(id) {
       const frame = document.createElement("iframe");
-      frame.src = "https://www.youtube-nocookie.com/embed/" + id;
-      frame.title = "Vídeo elegido de YouTube";
+      frame.src = "https://www.youtube.com/embed/" + encodeURIComponent(id) + "?rel=0";
+      frame.title = "Reproductor de YouTube";
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
       frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
       frame.allowFullscreen = true;
       $("#videoFrame").replaceChildren(frame);
+      $("#videoFrame").scrollIntoView({behavior:"smooth",block:"center"});
+    }
+    $("#youtubeForm").onsubmit = event => {
+      event.preventDefault();
+      const id = youtubeId($("#youtubeQuery").value.trim());
+      if (!id) { $("#youtubeStatus").textContent = "Pega un enlace válido de un vídeo de YouTube."; return; }
+      $("#youtubeStatus").textContent = "";
+      playYoutube(id);
+    };
+    $("#youtubeSearchForm").onsubmit = async event => {
+      event.preventDefault();
+      const query = $("#youtubeSearch").value.trim();
+      if (!query) return;
+      const status = $("#youtubeStatus"), results = $("#youtubeResults"), button = event.currentTarget.querySelector("button");
+      status.textContent = "Buscando vídeos…";
+      results.replaceChildren(); button.disabled = true;
+      try {
+        let data = null;
+        const servers = ["https://pipedapi.ducks.party", "https://api.piped.private.coffee"];
+        for (const server of servers) {
+          try {
+            const response = await fetch(server + "/search?q=" + encodeURIComponent(query) + "&filter=videos", {signal: AbortSignal.timeout(9000)});
+            if (!response.ok) continue;
+            const candidate = await response.json();
+            if (Array.isArray(candidate.items)) { data = candidate.items; break; }
+          } catch (_) {}
+        }
+        if (!data) throw new Error("El servicio de búsqueda no responde. Puedes volver a intentarlo o pegar un enlace.");
+        let count = 0;
+        for (const item of data) {
+          let id = "";
+          try { id = youtubeId(new URL(item.url, "https://www.youtube.com").href); } catch (_) {}
+          if (item.type !== "stream" || !id) continue;
+          const card = document.createElement("button");
+          card.type = "button"; card.className = "video-result";
+          const image = document.createElement("img"); image.loading = "lazy"; image.alt = "";
+          image.src = "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg";
+          const label = document.createElement("span"); label.textContent = item.title || "Vídeo de YouTube";
+          card.append(image, label); card.onclick = () => playYoutube(id);
+          results.appendChild(card); count++;
+          if (count >= 12) break;
+        }
+        status.textContent = count ? "Elige un vídeo para reproducirlo aquí." : "No encontré vídeos. Prueba otra búsqueda.";
+      } catch (error) { status.textContent = error.message || "No se ha podido realizar la búsqueda."; }
+      finally { button.disabled = false; }
     };
 
     $("#sitesForm").onsubmit = event => {
