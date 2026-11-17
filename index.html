@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mi espacio</title>
+  <title>Espacio personal</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -66,7 +66,7 @@
   </style>
 </head>
 <body>
-  <header>Mi espacio</header>
+  <header>Espacio personal</header>
 
   <div class="layout">
     <aside>
@@ -129,7 +129,7 @@
           <input id="youtubeSearch" type="search" placeholder="Busca un vídeo por nombre" required>
           <button>Buscar</button>
         </form>
-        <p class="hint">La búsqueda utiliza un servicio externo, que recibe lo que escribas. Elige un resultado para verlo abajo sin salir de la página.</p>
+        <p class="hint">La búsqueda utiliza un servicio externo, que recibe lo que escribas. Elige un resultado: aparecerá su enlace en el buscador y se cargará el vídeo abajo, sin salir de la página.</p>
         <p id="youtubeStatus" class="hint" role="status" aria-live="polite"></p>
         <div id="youtubeResults" class="video-results"></div>
         <h3>Reproductor</h3>
@@ -330,6 +330,7 @@
     };
 
     function playYoutube(id) {
+      $("#youtubeQuery").value = "https://www.youtube.com/watch?v=" + id;
       const frame = document.createElement("iframe");
       frame.src = "https://www.youtube.com/embed/" + encodeURIComponent(id) + "?rel=0";
       frame.title = "Reproductor de YouTube";
