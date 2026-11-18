@@ -16,7 +16,7 @@
     #newChat{width:100%;background:linear-gradient(110deg,#163e29,#1b4d31);border-color:#37784f;color:var(--lime)}.chat-list{margin-top:16px;display:grid;gap:8px}.chat-choice{text-align:left;background:#0c1e16;color:#c9e5d5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.chat-choice.active{background:#173d29;color:var(--lime);border-color:#43f59b}
     main{padding:28px;max-width:1100px;width:100%;margin:0 auto}nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}nav button{background:#0b1b14;color:#b7d3c2;border-color:#1b3b2b}nav button.active{background:linear-gradient(110deg,#1d5635,#204f2f);color:var(--lime);border-color:#43f59b;box-shadow:0 0 18px #43f59b22}
     .panel{background:linear-gradient(145deg,#0b1b14f5,#0a1913f5);border:1px solid var(--line);border-radius:20px;padding:24px;box-shadow:0 16px 55px #0005,inset 0 1px #ffffff08}h2{margin:0 0 12px;font-size:clamp(22px,4vw,30px);letter-spacing:-.04em}h3{color:var(--mint);margin-top:24px}p{line-height:1.55}#messages{display:grid;gap:12px;margin:20px 0}.message{padding:13px 16px;border-radius:15px;max-width:88%;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55}.user{justify-self:end;background:#123a28;border:1px solid #276440}.assistant{justify-self:start;background:#101f18;border:1px solid #1c3b2c}.row{display:flex;gap:9px;align-items:center}.row input{flex:1;min-width:0}input,textarea{width:100%;padding:12px 14px;border:1px solid #28503a;border-radius:11px;background:#07140e;color:var(--text);outline:none}input:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px #43f59b1b}input::placeholder,textarea::placeholder{color:#718e7d}textarea{min-height:100px;resize:vertical}.hint{color:var(--muted);font-size:14px;line-height:1.55}.hidden{display:none}.video-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:16px 0}.video-result{text-align:left;background:#0c2117;color:var(--text);padding:9px;overflow:hidden}.video-result img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:7px;display:block;margin-bottom:8px}.video-result span{display:block;font-size:14px;line-height:1.35}.player-box iframe{width:100%;aspect-ratio:16/9;height:auto;min-height:200px;background:#000}iframe{width:100%;min-height:420px;border:1px solid var(--line);border-radius:14px;margin-top:14px}
-    .attach-btn{flex:0 0 auto;width:45px;height:45px;padding:0;font-size:21px;border-radius:12px;background:#10281b;color:var(--green)}#fileInput{display:none}.file-chip{display:flex;align-items:center;gap:9px;padding:10px 12px;margin-top:10px;border:1px solid #28503a;border-radius:11px;background:#0b2116;color:var(--mint);font:12px 'DM Mono',monospace}.file-chip button{margin-left:auto;padding:4px 9px;background:transparent;color:#ff9d9d;border-color:#553435}.send-btn{background:linear-gradient(115deg,#28a85d,#a5eb46);color:#06180e;font-weight:700;border:0;padding-inline:20px}.statusline{min-height:20px}
+    .attach-btn{flex:0 0 auto;width:45px;height:45px;padding:0;font-size:21px;border-radius:12px;background:#10281b;color:var(--green)}#fileInput{display:none}.file-chip{display:flex;align-items:center;gap:9px;padding:10px 12px;margin-top:10px;border:1px solid #28503a;border-radius:11px;background:#0b2116;color:var(--mint);font:12px 'DM Mono',monospace}.file-chip.hidden{display:none}.file-chip button{margin-left:auto;padding:4px 9px;background:transparent;color:#ff9d9d;border-color:#553435}.send-btn{background:linear-gradient(115deg,#28a85d,#a5eb46);color:#06180e;font-weight:700;border:0;padding-inline:20px}.statusline{min-height:20px}
     @media(max-width:700px){.layout{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:12px 14px}.chat-list{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:10px}main{padding:16px 12px}.panel{padding:18px}.row{flex-wrap:wrap}.row input{flex-basis:65%}.message{max-width:95%}header{padding:12px 16px}}
   </style>
 </head>
@@ -188,8 +188,8 @@
         const ext = file.name.toLowerCase().split(".").pop();
         if (["txt","md","csv","json"].includes(ext)) attachedText = await file.text();
         else if (ext === "pdf" || file.type === "application/pdf") {
-          const pdfjs = await import("https://esm.sh/pdfjs-dist@4.10.38/build/pdf.min.mjs");
-          pdfjs.GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
+          const pdfjs = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs");
+          pdfjs.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
           const pdf = await pdfjs.getDocument({data: await file.arrayBuffer()}).promise;
           const pages = [];
           for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 20); pageNum++) {
@@ -201,14 +201,15 @@
           if (pdf.numPages > 20) attachedText += "\n[Se extrajeron solo las primeras 20 páginas.]";
         } else throw new Error("Formato no compatible. Usa .txt, .md, .csv, .json o .pdf.");
         if (!attachedText.trim()) throw new Error("No encontré texto legible en el archivo.");
-        attachedText = attachedText.slice(0, 18000);
+        const truncated = attachedText.length > 8000;
+        attachedText = attachedText.slice(0, 8000);
         attachedName = file.name;
         chip.replaceChildren();
         const label = document.createElement("span"); label.textContent = "📎 " + file.name + " · listo";
         const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "Quitar";
         remove.onclick = () => { attachedText = ""; attachedName = ""; chip.classList.add("hidden"); status.textContent = "Adjunta otro archivo o escribe un mensaje."; $("#fileInput").value = ""; };
         chip.append(label, remove); chip.classList.remove("hidden");
-        status.textContent = "Archivo leído. Escribe qué quieres que haga con él y pulsa Enviar.";
+        status.textContent = truncated ? "Archivo leído: se usarán los primeros 8.000 caracteres. Escribe tu pregunta." : "Archivo leído. Escribe qué quieres que haga con él y pulsa Enviar.";
       } catch (error) {
         attachedText = ""; attachedName = ""; chip.classList.add("hidden");
         status.textContent = error.message || "No se pudo leer el archivo.";
